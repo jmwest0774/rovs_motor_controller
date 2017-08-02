@@ -4,7 +4,8 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float32.h>
-
+#include <std_msgs/Empty.h>
+#define STEER_BIAS 567
 // macros to directly read the pins for encoder direction
 // these are specific to the Mega
 #define READ_PIN_22 bitRead(PINA, 0)
@@ -116,6 +117,7 @@ class PIDController {
   long int cmd;
   long int setpoint;
   long int error;
+  long int offset;
   int pin_a;
   int pin_b;
   long int prev_error;
@@ -129,14 +131,14 @@ class PIDController {
   // control loop gains
   Gains gains;
   Adafruit_DCMotor *motor;
-  PIDController(int _pin_a, int _pin_b, Gains _gains, Adafruit_DCMotor *_motor);
+  PIDController(int _pin_a, int _pin_b, Gains _gains, Adafruit_DCMotor *_motor, bool speed);
   void softStart();
   volatile long int count;
   long int position;
   long int speed;
   void loop(void);
 };
-PIDController::PIDController(int _pin_a, int _pin_b, Gains _gains, Adafruit_DCMotor *_motor) {
+PIDController::PIDController(int _pin_a, int _pin_b, Gains _gains, Adafruit_DCMotor *_motor, bool speed) {
   pin_a = _pin_a;
   pin_b = _pin_b;
   gains = _gains;
@@ -146,10 +148,11 @@ PIDController::PIDController(int _pin_a, int _pin_b, Gains _gains, Adafruit_DCMo
   pinMode(pin_b, INPUT_PULLUP);
   digitalWrite(pin_b, HIGH);
   pulses_per_rev = 18141;
-  speed_control = true;
+  speed_control = speed;
   integration_limit = 255;
   integration = 0;
   open_loop = false;
+  offset = 0;
 }
 void PIDController::softStart() {
   long int d_setpoint = cmd-setpoint;
@@ -180,7 +183,7 @@ void PIDController::loop() {
   if(speed_control) {
     error = setpoint- speed;
   } else {
-    error = setpoint - position;
+    error = setpoint - offset - STEER_BIAS - position;
   }
   long int d_error = error-prev_error;
   prev_error = error;
@@ -202,20 +205,20 @@ Gains positionGains(5,1,0,100);
 Gains speedGains(10,8,1,10);
 
 // create a controller for each motor
-PIDController lfs(lfs_pin_a, lfs_pin_b, positionGains, lfs_motor);
-PIDController lrs(lrs_pin_a, lrs_pin_b, positionGains, lrs_motor);
-PIDController rfs(rfs_pin_a, rfs_pin_b, positionGains, rfs_motor);
-PIDController rrs(rrs_pin_a, rrs_pin_b, positionGains, rrs_motor);
+PIDController lfs(lfs_pin_a, lfs_pin_b, positionGains, lfs_motor, false);
+PIDController lrs(lrs_pin_a, lrs_pin_b, positionGains, lrs_motor, false);
+PIDController rfs(rfs_pin_a, rfs_pin_b, positionGains, rfs_motor, false);
+PIDController rrs(rrs_pin_a, rrs_pin_b, positionGains, rrs_motor, false);
 
-PIDController head(head_pin_a, head_pin_b, positionGains, head_motor);
+PIDController head(head_pin_a, head_pin_b, positionGains, head_motor, false);
 
-PIDController lfd(lfd_pin_a, lfd_pin_b, speedGains, lfd_motor);
-PIDController lrd(lrd_pin_a, lrd_pin_b, speedGains, lrd_motor);
-PIDController rfd(rfd_pin_a, rfd_pin_b, speedGains, rfd_motor);
-PIDController rrd(rrd_pin_a, rrd_pin_b, speedGains, rrd_motor);
+PIDController lfd(lfd_pin_a, lfd_pin_b, speedGains, lfd_motor, true);
+PIDController lrd(lrd_pin_a, lrd_pin_b, speedGains, lrd_motor, true);
+PIDController rfd(rfd_pin_a, rfd_pin_b, speedGains, rfd_motor, true);
+PIDController rrd(rrd_pin_a, rrd_pin_b, speedGains, rrd_motor, true);
 
-PIDController rcd(rcd_pin_a, rcd_pin_b, speedGains, rcd_motor);
-PIDController lcd(lcd_pin_a, lcd_pin_b, speedGains, lcd_motor);
+PIDController rcd(rcd_pin_a, rcd_pin_b, speedGains, rcd_motor, true);
+PIDController lcd(lcd_pin_a, lcd_pin_b, speedGains, lcd_motor, true);
 
 
 // the ISRs have to be hard coded since they cannot be class functions
@@ -225,7 +228,7 @@ void isr_LFS() {
   else lfs.count++;
 }
 void isr_LRS() {
-  if(READ_PIN_LRS) lrs.count--;
+  if(!READ_PIN_LRS) lrs.count--;
   else lrs.count++;
 }
 void isr_RFS() {
@@ -276,6 +279,7 @@ void isr_HEAD() {
 #define RAD_TO_COUNTS (STEER_CNT_PER_REV/2.0/3.141)
 #define COUNTS_TO_RAD (1.0/RAD_TO_COUNTS)
 
+
 ros::NodeHandle nh;
 void speedCb( const geometry_msgs::Twist& msg){
   lfd.cmd = -msg.linear.x * SPEED_TO_COUNTS;
@@ -295,6 +299,13 @@ void steerCb( const geometry_msgs::Twist& msg){
 void headCb( const std_msgs::Float32& msg){
   msg.data;
 }
+void calibrateCb( const std_msgs::Empty& msg){
+  lfs.offset = lfs.position;
+  lrs.offset = lrs.position;
+  rfs.offset = rfs.position;
+  rrs.offset = rrs.position;
+}
+
 ros::Subscriber<std_msgs::Float32> headSub("head", &headCb );
 ros::Subscriber<geometry_msgs::Twist> steerSub("steer", &steerCb );
 ros::Subscriber<geometry_msgs::Twist> speedSub("speed", &speedCb );
@@ -333,6 +344,8 @@ void setup()
 }
 int loopCount = 0;
 int loopLimit = 1000/LOOP_FREQ;
+int cal_timer = 0;
+
 void loop()
 {  
   nh.spinOnce();
