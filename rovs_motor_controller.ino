@@ -40,62 +40,65 @@
 
 // assign pins to all of the encoders
 // pin_a is the interrupt pin.  Verify ISR pin mapping if you change these
-const byte lfs_pin_a = 19;
-const byte lfs_pin_b = 26;
-#define READ_PIN_LFS READ_PIN_26
-const byte lrs_pin_a = 18;
-const byte lrs_pin_b = 28;
-#define READ_PIN_LRS READ_PIN_28
-const byte rfs_pin_a = 15;
-const byte rfs_pin_b = 30;
-#define READ_PIN_RFS READ_PIN_30
-const byte rrs_pin_a = 14;
-const byte rrs_pin_b = 32;
-#define READ_PIN_RRS READ_PIN_32
+const byte lfs_pin_a = 18;
+const byte lfs_pin_b = 28;
+#define READ_PIN_LFS READ_PIN_28
+const byte lfd_pin_a = 19;
+const byte lfd_pin_b = 26;
+#define READ_PIN_LFD READ_PIN_26
 
-const byte lfd_pin_a = 2;
-const byte lfd_pin_b = 34;
-#define READ_PIN_LFD READ_PIN_34
-const byte lrd_pin_a = 3;
-const byte lrd_pin_b = 36;
-#define READ_PIN_LRD READ_PIN_36
-const byte rfd_pin_a = 10;
-const byte rfd_pin_b = 38;
-#define READ_PIN_RFD READ_PIN_38
-const byte rrd_pin_a = 11;
-const byte rrd_pin_b = 40;
-#define READ_PIN_RRD READ_PIN_40
+const byte lrs_pin_a = 14;
+const byte lrs_pin_b = 32;
+#define READ_PIN_LRS READ_PIN_32
+const byte lrd_pin_a = 15;
+const byte lrd_pin_b = 30;
+#define READ_PIN_LRD READ_PIN_30
 
-const byte head_pin_a = 12;
-const byte head_pin_b = 42;
-#define READ_PIN_HEAD READ_PIN_42
-const byte spare_pin_a = 13;
-const byte spare_pin_b = 44;
-#define READ_PIN_SPARE READ_PIN_44
+const byte rfs_pin_a = A9;
+const byte rfs_pin_b = 48;
+#define READ_PIN_RFS READ_PIN_48
+const byte rfd_pin_a = A8;
+const byte rfd_pin_b = 46;
+#define READ_PIN_RFD READ_PIN_46
 
-const byte rcd_pin_a = A8;
-const byte rcd_pin_b = 46;
-#define READ_PIN_RCD READ_PIN_46
-const byte lcd_pin_a = A9;
-const byte lcd_pin_b = 48;
-#define READ_PIN_LCD READ_PIN_48
+const byte rrs_pin_a = 13;
+const byte rrs_pin_b = 44;
+#define READ_PIN_RRS READ_PIN_44
+const byte rrd_pin_a = 12;
+const byte rrd_pin_b = 42;
+#define READ_PIN_RRD READ_PIN_42
+
+
+const byte head_pin_a = 3;
+const byte head_pin_b = 36;
+#define READ_PIN_HEAD READ_PIN_36
+const byte spare_pin_a = 10;
+const byte spare_pin_b = 38;
+#define READ_PIN_SPARE READ_PIN_38
+
+const byte rcd_pin_a = 11;
+const byte rcd_pin_b = 40;
+#define READ_PIN_RCD READ_PIN_40
+const byte lcd_pin_a = 2;
+const byte lcd_pin_b = 34;
+#define READ_PIN_LCD READ_PIN_34
 
 Adafruit_MotorShield AFMS_1 = Adafruit_MotorShield(0x60);
-Adafruit_DCMotor *lfs_motor = AFMS_1.getMotor(1);
-Adafruit_DCMotor *lfd_motor = AFMS_1.getMotor(2);
-Adafruit_DCMotor *lrs_motor = AFMS_1.getMotor(3);
-Adafruit_DCMotor *lrd_motor = AFMS_1.getMotor(4);
+Adafruit_DCMotor *lfs_motor = AFMS_1.getMotor(2);
+Adafruit_DCMotor *lfd_motor = AFMS_1.getMotor(1);
+Adafruit_DCMotor *rfs_motor = AFMS_1.getMotor(4);
+Adafruit_DCMotor *rfd_motor = AFMS_1.getMotor(3);
 
 Adafruit_MotorShield AFMS_2 = Adafruit_MotorShield(0x61);
-Adafruit_DCMotor *rfs_motor = AFMS_2.getMotor(1);
-Adafruit_DCMotor *rfd_motor = AFMS_2.getMotor(2);
-Adafruit_DCMotor *rrs_motor = AFMS_2.getMotor(3);
-Adafruit_DCMotor *rrd_motor = AFMS_2.getMotor(4);
+Adafruit_DCMotor *lrs_motor = AFMS_2.getMotor(1);
+Adafruit_DCMotor *lrd_motor = AFMS_2.getMotor(2);
+Adafruit_DCMotor *rrs_motor = AFMS_2.getMotor(4);
+Adafruit_DCMotor *rrd_motor = AFMS_2.getMotor(3);
 
 Adafruit_MotorShield AFMS_3 = Adafruit_MotorShield(0x62);
 Adafruit_DCMotor *lcd_motor = AFMS_3.getMotor(1);
-Adafruit_DCMotor *rcd_motor = AFMS_3.getMotor(2);
-Adafruit_DCMotor *head_motor = AFMS_3.getMotor(3);
+Adafruit_DCMotor *head_motor = AFMS_3.getMotor(2);
+Adafruit_DCMotor *rcd_motor = AFMS_3.getMotor(3);
 //Adafruit_DCMotor *spare_motor = AFMS_3.getMotor(4);
 
 class Gains {
@@ -218,7 +221,7 @@ PIDController lcd(lcd_pin_a, lcd_pin_b, speedGains, lcd_motor);
 // the ISRs have to be hard coded since they cannot be class functions
 // use direct port access since digitalRead is too slow for fast encoders
 void isr_LFS() {
-  if(READ_PIN_LFS) lfs.count--;
+  if(!READ_PIN_LFS) lfs.count--;
   else lfs.count++;
 }
 void isr_LRS() {
@@ -226,36 +229,36 @@ void isr_LRS() {
   else lrs.count++;
 }
 void isr_RFS() {
-  if(READ_PIN_RFS) rfs.count--;
+  if(!READ_PIN_RFS) rfs.count--;
   else rfs.count++;
 }
 void isr_RRS() {
-  if(READ_PIN_RRS) rrs.count--;
+  if(!READ_PIN_RRS) rrs.count--;
   else rrs.count++;
 }
 
 void isr_LFD() {
-  if(READ_PIN_LFD) lfd.count--;
+  if(!READ_PIN_LFD) lfd.count--;
   else lfd.count++;
 }
 void isr_LRD() {
-  if(READ_PIN_LRD) lrd.count--;
+  if(!READ_PIN_LRD) lrd.count--;
   else lrd.count++;
 }
 void isr_RFD() {
-  if(READ_PIN_RFD) rfd.count--;
+  if(!READ_PIN_RFD) rfd.count--;
   else rfd.count++;
 }
 void isr_RRD() {
-  if(READ_PIN_RRD) rrd.count--;
+  if(!READ_PIN_RRD) rrd.count--;
   else rrd.count++;
 }
 void isr_RCD() {
-  if(READ_PIN_RFD) rcd.count--;
+  if(READ_PIN_RCD) rcd.count--;
   else rcd.count++;
 }
 void isr_LCD() {
-  if(READ_PIN_LCD) lcd.count--;
+  if(!READ_PIN_LCD) lcd.count--;
   else lcd.count++;
 }
 
@@ -275,10 +278,9 @@ void isr_HEAD() {
 
 ros::NodeHandle nh;
 void speedCb( const geometry_msgs::Twist& msg){
-  lfd.cmd = msg.linear.x * SPEED_TO_COUNTS;
-  lcd.cmd = msg.linear.y * SPEED_TO_COUNTS;
-//  lcd.cmd = msg.linear.y;
-  lrd.cmd = msg.linear.z * SPEED_TO_COUNTS;
+  lfd.cmd = -msg.linear.x * SPEED_TO_COUNTS;
+  lcd.cmd = -msg.linear.y * SPEED_TO_COUNTS;
+  lrd.cmd = -msg.linear.z * SPEED_TO_COUNTS;
   rfd.cmd = msg.angular.x * SPEED_TO_COUNTS;
   rcd.cmd = msg.angular.y * SPEED_TO_COUNTS;
   rrd.cmd = msg.angular.z * SPEED_TO_COUNTS;
@@ -357,9 +359,9 @@ void loop()
     steerFeedbackMsg.angular.y = lcd.motor_drive;
 //    steerFeedbackMsg.angular.z = lcd.speed;
     steerFeedbackMsg.angular.z = rrs.position;
-    speedFeedbackMsg.linear.x = (float)lfd.speed*COUNTS_TO_SPEED;
-    speedFeedbackMsg.linear.y = (float)lcd.speed*COUNTS_TO_SPEED;
-    speedFeedbackMsg.linear.z = (float)lrd.speed*COUNTS_TO_SPEED;
+    speedFeedbackMsg.linear.x = -(float)lfd.speed*COUNTS_TO_SPEED;
+    speedFeedbackMsg.linear.y = -(float)lcd.speed*COUNTS_TO_SPEED;
+    speedFeedbackMsg.linear.z = -(float)lrd.speed*COUNTS_TO_SPEED;
     speedFeedbackMsg.angular.x = (float)rfd.speed*COUNTS_TO_SPEED;
     speedFeedbackMsg.angular.y = (float)rcd.speed*COUNTS_TO_SPEED;
     speedFeedbackMsg.angular.z = (float)rrd.speed*COUNTS_TO_SPEED;
