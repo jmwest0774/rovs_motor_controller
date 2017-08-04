@@ -5,7 +5,7 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Empty.h>
-#define STEER_BIAS 567
+#define STEER_BIAS 790
 // macros to directly read the pins for encoder direction
 // these are specific to the Mega
 #define READ_PIN_22 bitRead(PINA, 0)
@@ -149,7 +149,7 @@ PIDController::PIDController(int _pin_a, int _pin_b, Gains _gains, Adafruit_DCMo
   digitalWrite(pin_b, HIGH);
   pulses_per_rev = 18141;
   speed_control = speed;
-  integration_limit = 255;
+  integration_limit = 125;
   integration = 0;
   open_loop = false;
   offset = 0;
@@ -183,7 +183,7 @@ void PIDController::loop() {
   if(speed_control) {
     error = setpoint- speed;
   } else {
-    error = setpoint - offset - STEER_BIAS - position;
+    error = setpoint - position;
   }
   long int d_error = error-prev_error;
   prev_error = error;
@@ -201,8 +201,8 @@ void PIDController::loop() {
       motor->setSpeed(-motor_drive);
     }
 }
-Gains positionGains(5,1,0,100);
-Gains speedGains(10,8,1,10);
+Gains positionGains(5,1,0,200);
+Gains speedGains(10,8,1,20);
 
 // create a controller for each motor
 PIDController lfs(lfs_pin_a, lfs_pin_b, positionGains, lfs_motor, false);
@@ -290,25 +290,26 @@ void speedCb( const geometry_msgs::Twist& msg){
   rrd.cmd = msg.angular.z * SPEED_TO_COUNTS;
 }
 void steerCb( const geometry_msgs::Twist& msg){
-  lfs.cmd = msg.linear.x * RAD_TO_COUNTS;
-  lrs.cmd = msg.linear.z * RAD_TO_COUNTS;
-  rfs.cmd = msg.angular.x * RAD_TO_COUNTS;
-  rrs.cmd = msg.angular.z * RAD_TO_COUNTS;
+  lfs.cmd = -msg.linear.x * RAD_TO_COUNTS;
+  lrs.cmd = -msg.linear.z * RAD_TO_COUNTS;
+  rfs.cmd = -msg.angular.x * RAD_TO_COUNTS;
+  rrs.cmd = -msg.angular.z * RAD_TO_COUNTS;
 }
 
 void headCb( const std_msgs::Float32& msg){
   msg.data;
 }
 void calibrateCb( const std_msgs::Empty& msg){
-  lfs.offset = lfs.position;
-  lrs.offset = lrs.position;
-  rfs.offset = rfs.position;
-  rrs.offset = rrs.position;
+  lfs.position = STEER_BIAS;
+  lrs.position = STEER_BIAS;
+  rfs.position = STEER_BIAS;
+  rrs.position = STEER_BIAS;
 }
 
 ros::Subscriber<std_msgs::Float32> headSub("head", &headCb );
 ros::Subscriber<geometry_msgs::Twist> steerSub("steer", &steerCb );
 ros::Subscriber<geometry_msgs::Twist> speedSub("speed", &speedCb );
+ros::Subscriber<std_msgs::Empty> calibrateSub("calibrate", &calibrateCb );
 geometry_msgs::Twist speedFeedbackMsg;
 geometry_msgs::Twist steerFeedbackMsg;
 std_msgs::Float32 headFeedbackMsg;
@@ -338,6 +339,7 @@ void setup()
   nh.subscribe(headSub);
   nh.subscribe(steerSub);
   nh.subscribe(speedSub);
+  nh.subscribe(calibrateSub);
   nh.advertise(headPub);
   nh.advertise(steerPub);
   nh.advertise(speedPub);
