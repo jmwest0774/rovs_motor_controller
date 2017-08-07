@@ -257,7 +257,7 @@ void isr_RRD() {
   else rrd.count++;
 }
 void isr_RCD() {
-  if(READ_PIN_RCD) rcd.count--;
+  if(!READ_PIN_RCD) rcd.count--;
   else rcd.count++;
 }
 void isr_LCD() {
