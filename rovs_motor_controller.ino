@@ -155,6 +155,9 @@ PIDController::PIDController(int _pin_a, int _pin_b, Gains _gains, Adafruit_DCMo
   offset = 0;
 }
 void PIDController::softStart() {
+  // ignore softstart
+  setpoint = cmd;
+  return;
   long int d_setpoint = cmd-setpoint;
   if(d_setpoint > 0) {
      if(d_setpoint > gains.max_step) setpoint += gains.max_step;

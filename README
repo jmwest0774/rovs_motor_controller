@@ -1,0 +1,5 @@
+Arduino motor controller sketch for ROV-S
+
+compile from command line with:
+
+/opt/arduino-1.8.3/arduino --upload ~/Arduino/rovs_motor_controller/rovs_motor_controller.ino
